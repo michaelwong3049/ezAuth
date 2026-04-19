@@ -1,52 +1,76 @@
-import { useState, useEffect } from "react";
-import Setup from "./components/Setup";
-
+import { useState, useEffect, useRef } from "react";
 import * as OTPAuth from "otpauth";
+import Setup from "./components/Setup";
 import DisplayCode from "./components/DisplayCode";
 
-export default function App() {
-  const [code, setCode] = useState("");
-  const [loggedIn, setLoggedIn] = useState(!!localStorage.getItem("loggedIn"));
+import TockGlyph from "./components/TockGlyph";
+import Welcome from "./components/Welcome";
 
-  const deleteLocalStorage = () => {
-    localStorage.removeItem("loggedIn");
-  }
+type Screen = "welcome" | "setup" | "code";
+
+export default function App() {
+  const hasSecret = !!localStorage.getItem("secret");
+  const [screen, setScreen] = useState<Screen>(hasSecret ? "code" : "welcome");
+  const [transitionOut, setTransitionOut] = useState(false);
+  const [code, setCode] = useState("");
+  const totpRef = useRef<OTPAuth.TOTP | null>(null);
+
+  const go = (next: Screen) => {
+    setTransitionOut(true);
+    setTimeout(() => {
+      setScreen(next);
+      setTransitionOut(false);
+    }, 260);
+  };
 
   useEffect(() => {
-    if (!loggedIn) {
-      return;
-    }
+    if (screen !== "code") return;
 
-    const secretToken = localStorage.getItem("secret");
-
-    if (!secretToken) {
-      throw new Error("secretToken is null");
-    }
+    const secret = localStorage.getItem("secret");
+    if (!secret) return;
 
     const totp = new OTPAuth.TOTP({
-      secret: OTPAuth.Secret.fromBase32(secretToken),
+      secret: OTPAuth.Secret.fromBase32(secret),
       digits: 6,
       period: 30,
-    })
+    });
+    totpRef.current = totp;
 
-    const tick = () => {
-      const currentCode = totp.generate();
-      setCode(currentCode);
-    }
-
+    const tick = () => setCode(totp.generate());
     tick();
-    const interval = setInterval((tick), 30000);
+
+    const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, [loggedIn])
+  }, [screen]);
+
+  const handleReset = () => {
+    localStorage.removeItem("secret");
+    localStorage.removeItem("loggedIn");
+    totpRef.current = null;
+    go("setup");
+  };
 
   return (
-    <>
-      <div className="w-96 h-96 flex flex-col justify-center items-center">
-        <h1 className="text-blue-500 text-2xl font-bold">ezAuth</h1>
-        { !loggedIn ? <Setup onComplete={() => setLoggedIn(true)}/> : <DisplayCode code={code}/> }
+    <div className="popup">
+      <div className="popup-header">
+        <div className="brand">
+          <TockGlyph size={18} />
+          <span className="brand-name">Tock</span>
+        </div>
+        <div className="brand-sub">
+          <span className="sync-dot" />
+          synced
+        </div>
       </div>
-      <button onClick={deleteLocalStorage}>asdfadffda</button>
-    </>
-  )
+
+      <div className="popup-body">
+        <div className={`screen-wrap${transitionOut ? " out" : ""}`} key={screen}>
+          {screen === "welcome" && <Welcome onContinue={() => go("setup")} />}
+          {screen === "setup"   && <Setup onComplete={() => go("code")} onBack={() => go("welcome")} />}
+          {screen === "code"    && <DisplayCode code={code} onReset={handleReset} />}
+        </div>
+      </div>
+    </div>
+  );
 }
 
