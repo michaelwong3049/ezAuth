@@ -4,6 +4,8 @@ import Arrow from "./Arrow";
 import Spinner from "./Spinner";
 import CheckInline from "./CheckInLine";
 
+import { encryptSecret } from "../utils";
+
 type SetupProps = {
   onComplete: () => void;
   onBack: () => void;
@@ -30,13 +32,17 @@ export default function Setup({ onComplete, onBack }: SetupProps) {
     setStep(2);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (pw.length < 8) return setErr("Password needs at least 6 characters.");
     if (pw !== pw2) return setErr("Passwords don't match.");
     setErr(null);
     setSubmitting(true);
-    localStorage.setItem("secret", secret.replace(/\s/g, "").toUpperCase());
-    localStorage.setItem("loggedIn", "true");
+
+    setSecret(secret.replace(/\s/g, "").toUpperCase());
+    const encryptedSecret = await encryptSecret(secret);
+
+    await chrome.storage.local.set({ "secret" : Array.from(new Uint8Array(encryptedSecret)) });
+    await chrome.storage.local.set({ "loggedIn" : "true" }); 
     setTimeout(() => onComplete(), 700);
   };
 
@@ -75,7 +81,7 @@ export default function Setup({ onComplete, onBack }: SetupProps) {
             <div className={`input-wrap${validSecret ? " ok" : ""}`}>
               <input
                 autoFocus
-                type="text"
+                type="password"
                 placeholder="JBSWY3DP EHPK3PXP …"
                 value={secret}
                 onChange={(e) => setSecret(e.target.value.toUpperCase())}

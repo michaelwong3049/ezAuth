@@ -3,6 +3,7 @@
   "name": "ezAuth",
   "version": "1.0.0",
   "description": "An easier way to get CUNY TOTP code from your computer via chrome extension",
+  "permissions": ["storage"],
   "action": {
     "default_popup": "index.html"
   }

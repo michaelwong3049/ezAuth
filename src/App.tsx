@@ -1,16 +1,18 @@
 import { useState, useEffect, useRef } from "react";
 import * as OTPAuth from "otpauth";
+
 import Setup from "./components/Setup";
 import DisplayCode from "./components/DisplayCode";
-
 import TockGlyph from "./components/TockGlyph";
 import Welcome from "./components/Welcome";
+
+import { decryptSecret, getSecret } from "./utils";
 
 type Screen = "welcome" | "setup" | "code";
 
 export default function App() {
-  const hasSecret = !!localStorage.getItem("secret");
-  const [screen, setScreen] = useState<Screen>(hasSecret ? "code" : "welcome");
+  const [secret, setSecret] = useState<number[] | null>(null);
+  const [screen, setScreen] = useState<Screen>(secret ? "code" : "welcome");
   const [transitionOut, setTransitionOut] = useState(false);
   const [code, setCode] = useState("");
   const totpRef = useRef<OTPAuth.TOTP | null>(null);
@@ -24,28 +26,44 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (screen !== "code") return;
+    if (screen != "code") return;
 
-    const secret = localStorage.getItem("secret");
-    if (!secret) return;
+    (async () => {
+      const res = await getSecret();
+      setSecret(res);
+    })()
+  }, [screen])
 
-    const totp = new OTPAuth.TOTP({
-      secret: OTPAuth.Secret.fromBase32(secret),
-      digits: 6,
-      period: 30,
-    });
-    totpRef.current = totp;
+  useEffect(() => {
+    (async () => {
+      if (screen !== "code") {
+        return;
+      }
 
-    const tick = () => setCode(totp.generate());
-    tick();
+      if (!secret) {
+        return;
+      }
 
-    const interval = setInterval(tick, 1000);
-    return () => clearInterval(interval);
-  }, [screen]);
+      const decryptedSecret = await decryptSecret(secret);
 
-  const handleReset = () => {
-    localStorage.removeItem("secret");
-    localStorage.removeItem("loggedIn");
+      const totp = new OTPAuth.TOTP({
+        secret: OTPAuth.Secret.fromBase32(decryptedSecret),
+        digits: 6,
+        period: 30,
+      });
+      totpRef.current = totp;
+
+      const tick = () => setCode(totp.generate());
+      tick();
+
+      const interval = setInterval(tick, 1000);
+      return () => clearInterval(interval);
+    })()
+  }, [secret, screen]);
+
+  const handleReset = async () => {
+    await chrome.storage.local.remove("secret");
+    await chrome.storage.local.remove("loggedIn");
     totpRef.current = null;
     go("setup");
   };
@@ -66,8 +84,8 @@ export default function App() {
       <div className="popup-body">
         <div className={`screen-wrap${transitionOut ? " out" : ""}`} key={screen}>
           {screen === "welcome" && <Welcome onContinue={() => go("setup")} />}
-          {screen === "setup"   && <Setup onComplete={() => go("code")} onBack={() => go("welcome")} />}
-          {screen === "code"    && <DisplayCode code={code} onReset={handleReset} />}
+          {screen === "setup" && <Setup onComplete={() => go("code")} onBack={() => go("welcome")} />}
+          {screen === "code" && <DisplayCode code={code} onReset={handleReset} />}
         </div>
       </div>
     </div>
