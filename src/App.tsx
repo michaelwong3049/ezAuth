@@ -8,11 +8,11 @@ import Welcome from "./components/Welcome";
 
 import { decryptSecret, getSecret } from "./utils";
 
-type Screen = "welcome" | "setup" | "code";
+type Screen = "welcome" | "setup" | "code" | "loading";
 
 export default function App() {
   const [secret, setSecret] = useState<number[] | null>(null);
-  const [screen, setScreen] = useState<Screen>(secret ? "code" : "welcome");
+  const [screen, setScreen] = useState<Screen>("loading");
   const [transitionOut, setTransitionOut] = useState(false);
   const [code, setCode] = useState("");
   const totpRef = useRef<OTPAuth.TOTP | null>(null);
@@ -26,13 +26,17 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (screen != "code") return;
-
     (async () => {
       const res = await getSecret();
-      setSecret(res);
-    })()
-  }, [screen])
+      if (res) {
+        setSecret(res);
+        setScreen("code");
+      } else {
+        setScreen("welcome");
+      }
+    })();
+  }, []);
+
 
   useEffect(() => {
     (async () => {
@@ -84,7 +88,7 @@ export default function App() {
       <div className="popup-body">
         <div className={`screen-wrap${transitionOut ? " out" : ""}`} key={screen}>
           {screen === "welcome" && <Welcome onContinue={() => go("setup")} />}
-          {screen === "setup" && <Setup onComplete={() => go("code")} onBack={() => go("welcome")} />}
+          {screen === "setup" && <Setup onComplete={async () => { const res = await getSecret(); if (res) setSecret(res); go("code"); }} onBack={() => go("welcome")} />}
           {screen === "code" && <DisplayCode code={code} onReset={handleReset} />}
         </div>
       </div>
