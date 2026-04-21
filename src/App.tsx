@@ -67,7 +67,6 @@ export default function App() {
 
   const handleReset = async () => {
     await chrome.storage.local.remove("secret");
-    await chrome.storage.local.remove("loggedIn");
     totpRef.current = null;
     go("setup");
   };
