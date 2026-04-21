@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "ezAuth",
+  "name": "tock",
   "version": "1.0.0",
   "description": "An easier way to get CUNY TOTP code from your computer via chrome extension",
   "permissions": ["storage"],
