@@ -1,24 +1,25 @@
 import { useState, useEffect } from "react";
 
 export default function Digit({ char, delay }: { char: string; delay: number }) {
-  const [prev, setPrev] = useState(char);
-  const [rolling, setRolling] = useState(false);
+  const [settledChar, setSettledChar] = useState(char);
+  const rolling = char !== settledChar;
 
   useEffect(() => {
-    if (char !== prev) {
-      setRolling(true);
-      const t = setTimeout(() => {
-        setPrev(char);
-        setRolling(false);
-      }, 420);
-      return () => clearTimeout(t);
+    if (!rolling) {
+      return;
     }
-  }, [char]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    const timer = setTimeout(() => {
+      setSettledChar(char);
+    }, 420);
+
+    return () => clearTimeout(timer);
+  }, [char, rolling]);
 
   return (
     <span className={`digit${rolling ? " rolling" : ""}`} style={{ transitionDelay: `${delay}ms` }}>
       <span className="digit-face current">{char}</span>
-      <span className="digit-face previous">{prev}</span>
+      <span className="digit-face previous">{settledChar}</span>
     </span>
   );
 }

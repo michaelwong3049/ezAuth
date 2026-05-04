@@ -15,7 +15,7 @@ export default function Welcome({ onContinue }: { onContinue: () => void }) {
         </div>
       </div>
 
-      <div style={{ padding: "2px 0 0" }}>
+      <div className="welcome-copy">
         <h1 className="display-heading">
           <span className="cuny-badge">CUNY</span> <span className="serif">Two-factor,</span><br />
           one click away.

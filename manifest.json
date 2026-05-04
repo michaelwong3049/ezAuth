@@ -4,8 +4,16 @@
   "version": "1.0.0",
   "description": "An easier way to get CUNY TOTP code from your computer via chrome extension",
   "permissions": ["storage"],
+  "host_permissions": ["<all_urls>"],
   "action": {
     "default_popup": "index.html"
-  }
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["src/content.ts"],
+      "run_at": "document_idle"
+    }
+  ]
 }
 

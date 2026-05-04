@@ -11,32 +11,52 @@ type Props = {
 };
 
 const PERIOD = 30;
+const getTimeLeft = (now: number) => PERIOD - (Math.floor(now / 1000) % PERIOD);
 
 export default function DisplayCode({ code, onReset }: Props) {
-  const [timeLeft, setTimeLeft] = useState(PERIOD - (Math.floor(Date.now() / 1000) % PERIOD));
+  const [now, setNow] = useState(0);
   const [copied, setCopied] = useState(false);
   const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setTimeLeft(PERIOD - (Math.floor(Date.now() / 1000) % PERIOD));
-    }, 250);
-    return () => clearInterval(interval);
+    const updateTime = () => {
+      setNow(Date.now());
+    };
+
+    const timeout = setTimeout(updateTime, 0);
+    const interval = setInterval(updateTime, 250);
+
+    return () => {
+      clearTimeout(timeout);
+      clearInterval(interval);
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (copyTimerRef.current) {
+        clearTimeout(copyTimerRef.current);
+      }
+    };
   }, []);
 
   const doCopy = useCallback(() => {
-    try { navigator.clipboard?.writeText(code); } catch {}
+    if (navigator.clipboard) {
+      void navigator.clipboard.writeText(code).catch(() => undefined);
+    }
+
     setCopied(true);
     if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
     copyTimerRef.current = setTimeout(() => setCopied(false), 1400);
   }, [code]);
 
+  const timeLeft = now === 0 ? PERIOD : getTimeLeft(now);
   const warn = timeLeft <= 5;
   const progress = timeLeft / PERIOD;
 
   return (
     <div className="code-screen">
-      <div style={{ display: "flex", justifyContent: "flex-end", padding: "4px 0 0" }}>
+      <div className="code-topbar">
         <button className="menu-item danger" onClick={onReset}>
           Logout
         </button>
@@ -52,7 +72,6 @@ export default function DisplayCode({ code, onReset }: Props) {
           {copied ? <><CheckInline /> Copied to clipboard</> : <><CopyIcon /> Copy code</>}
         </span>
       </button>
-
     </div>
   );
 }
